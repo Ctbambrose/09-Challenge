@@ -16,6 +16,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 // TODO: Implement middleware to connect the routes
 app.use(routes);
-
+app.get('/test', (_req, res) => res.send('✅ Server is working'));
 // Start the server on the port
 app.listen(PORT, () => console.log(`Listening on PORT: ${PORT}`));

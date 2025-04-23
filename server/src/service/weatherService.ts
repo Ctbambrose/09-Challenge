@@ -12,19 +12,21 @@ interface Coordinates {
 }
 // TODO: Define a class for the Weather object
 class Weather {
-  temperature: number;
-  description: string;
-  humidity: number;
+  tempF: number;
+  icon: string;
+  iconDescription: string;
   windSpeed: number;
-  cityName: string;
+  humidity: number;
+  city: string;
   date: Dayjs | string;
 
-  constructor( temperature:number, description:string, humidity:number, windSpeed:number, cityName:string, date:Dayjs |string ) {
-    this.temperature=temperature;
-    this.description=description;
+  constructor( tempF:number, iconDescription:string, humidity:number, icon:string , windSpeed:number, city:string, date:Dayjs |string ) {
+    this.tempF=tempF;
+    this.iconDescription=iconDescription;
     this.humidity=humidity;
+    this.icon =icon;
     this.windSpeed=windSpeed;
-    this.cityName=cityName;
+    this.city=city;
     this.date=dayjs(date).format('YYYY-MM-DD HH:mm:ss');
   }
 }
@@ -68,7 +70,7 @@ class WeatherService {
   }
   // TODO: Create buildWeatherQuery method
   private buildWeatherQuery(coordinates: Coordinates): string {
-    return `${this.baseURL}/data/2.5/forecast?lat=${coordinates.lat}&lon=${coordinates.lon}&appid=${this.apiKey}`
+    return `${this.baseURL}/data/2.5/forecast?lat=${coordinates.lat}&lon=${coordinates.lon}&units=imperial&appid=${this.apiKey}`;
   }
   // TODO: Create fetchAndDestructureLocationData method
   private async fetchAndDestructureLocationData():Promise<Coordinates> {
@@ -78,17 +80,23 @@ class WeatherService {
   // TODO: Create fetchWeatherData method
   private async fetchWeatherData(coordinates: Coordinates) {
     const response = await fetch(this.buildWeatherQuery(coordinates));
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Failed to fetch weather: ${response.status} - ${errorBody}`);
+    }
     return await response.json();
+
   }
   // TODO: Build parseCurrentWeather method
   private parseCurrentWeather(response: any) {
     return new Weather(
-  response.main.temp,
-  response.weather.description,
-  response.main.humidity ,
-  response.wind.windSpeed,
-  response.city.name ,
-  response.dt,
+      response.list[0].main.temp, // tempF
+      response.list[0].weather[0].description, // iconDescription
+      response.list[0].main.humidity, // humidity
+      response.list[0].weather[0].icon, // icon
+      response.list[0].wind.speed, // windSpeed
+      response.city.name, // city
+      response.list[0].dt_txt // date
     )
   }
   // TODO: Complete buildForecastArray method
@@ -103,9 +111,10 @@ class WeatherService {
         data.main.temp,
         data.weather[0].description + (isSameAsCurrent ? " (Current)" : ""),
         data.main.humidity,
+        data.weather[0].icon,
         data.wind.speed,
-        data.city?.name || currentWeather.cityName, // fallback to currentWeather's city
-        forecastDate.format("YYYY-MM-DD HH:mm"), // normalize the date format
+        currentWeather.city,
+        forecastDate.format("YYYY-MM-DD HH:mm"),
       );
     });
   }
@@ -115,7 +124,7 @@ class WeatherService {
     const coordinates = await this.fetchAndDestructureLocationData();
     const weatherResponce = await this.fetchWeatherData(coordinates);
     const currentWeather = this.parseCurrentWeather(weatherResponce);
-    const forecastArray = this.buildForecastArray(currentWeather, weatherResponce.forecast || []);
+    const forecastArray = this.buildForecastArray(currentWeather, weatherResponce.list);
     return { current: currentWeather, forecast: forecastArray };
   }
 }
